@@ -1,0 +1,1152 @@
+% =====================================================================
+%  Rapport : Analyse et refonte de l'architecture du système DNN//*Tcs
+%  Compilateur Overleaf : pdfLaTeX (compiler deux fois pour la table
+%  des matières et les références croisées)
+% =====================================================================
+\documentclass[11pt,a4paper]{report}
+
+% ---------------------------------------------------------------------
+%  Paquets
+% ---------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.3cm,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[table]{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,shapes.multipart,
+                fit,backgrounds,calc,shadows,babel}
+\usepackage{booktabs,tabularx,array}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{pdflscape}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% ---------------------------------------------------------------------
+%  Couleurs (définies dans le préambule pour éviter les conflits
+%  avec les caractères actifs de babel-french)
+% ---------------------------------------------------------------------
+% Palette générale des schémas
+\definecolor{purpleF}{HTML}{EEEDFE}\definecolor{purpleB}{HTML}{534AB7}\definecolor{purpleT}{HTML}{3C3489}
+\definecolor{tealF}{HTML}{E1F5EE}\definecolor{tealB}{HTML}{0F6E56}\definecolor{tealT}{HTML}{085041}
+\definecolor{coralF}{HTML}{FAECE7}\definecolor{coralB}{HTML}{993C1D}\definecolor{coralT}{HTML}{712B13}
+\definecolor{grayF}{HTML}{F1EFE8}\definecolor{grayB}{HTML}{5F5E5A}\definecolor{grayT}{HTML}{444441}
+% Palette standard du modèle C4
+\definecolor{c4person}{HTML}{08427B}\definecolor{c4personD}{HTML}{052E56}
+\definecolor{c4system}{HTML}{1168BD}\definecolor{c4systemD}{HTML}{0B4884}
+\definecolor{c4container}{HTML}{438DD5}\definecolor{c4containerD}{HTML}{2E6295}
+\definecolor{c4component}{HTML}{85BBF0}\definecolor{c4componentD}{HTML}{5D82A8}
+\definecolor{c4ext}{HTML}{999999}\definecolor{c4extD}{HTML}{6B6B6B}
+\definecolor{c4line}{HTML}{555555}
+\definecolor{c4shadow}{HTML}{6FA5DD}
+% Tableaux et liens
+\definecolor{headgray}{HTML}{E4E8EE}
+\definecolor{rowgray}{HTML}{F6F7F9}
+\definecolor{linkblue}{HTML}{0B4884}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=linkblue,urlcolor=linkblue,citecolor=linkblue,
+            pdftitle={Analyse et refonte de l'architecture du système DNN//*Tcs}}
+
+% ---------------------------------------------------------------------
+%  Mise en page
+% ---------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Analyse et refonte architecturale}
+\fancyhead[R]{\small \leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlist{itemsep=2pt,topsep=4pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.3}
+\captionsetup{font=small,labelfont=bf}
+
+% Algorithmes en français
+\floatname{algorithm}{Algorithme}
+\algrenewcommand\algorithmicrequire{\textbf{Entrées :}}
+\algrenewcommand\algorithmicensure{\textbf{Sortie :}}
+\algrenewcommand\algorithmicif{\textbf{si}}
+\algrenewcommand\algorithmicthen{\textbf{alors}}
+\algrenewcommand\algorithmicend{\textbf{fin}}
+\algrenewcommand\algorithmicwhile{\textbf{tant que}}
+\algrenewcommand\algorithmicdo{\textbf{faire}}
+\algrenewcommand\algorithmicforall{\textbf{pour tout}}
+\algrenewcommand\algorithmicreturn{\textbf{retourner}}
+
+% ---------------------------------------------------------------------
+%  Macros
+% ---------------------------------------------------------------------
+\newcommand{\dnnTcs}{\ensuremath{\mathrm{DNN}/\!/^{*}\mathrm{T}_{cs}}}
+\newcommand{\dnnc}{\ensuremath{\mathrm{DNN}/\!/_{c}}}
+\newcommand{\dnns}{\ensuremath{\mathrm{DNN}/\!/_{s}}}
+\newcommand{\ms}[1]{\texttt{#1}}
+% Texte d'un élément C4 : nom, type/technologie, description
+\newcommand{\cfour}[3]{\textbf{#1}\\[1pt]{\tiny[#2]}\\[3pt]#3}
+
+% ---------------------------------------------------------------------
+%  Styles TikZ
+% ---------------------------------------------------------------------
+\tikzset{
+  % Schémas d'analyse
+  purplebox/.style={draw=purpleB,fill=purpleF,text=purpleT,rounded corners=3pt,
+                    align=center,font=\small,inner sep=6pt,line width=0.6pt},
+  tealbox/.style={draw=tealB,fill=tealF,text=tealT,rounded corners=3pt,
+                  align=center,font=\small,inner sep=6pt,line width=0.6pt},
+  coralbox/.style={draw=coralB,fill=coralF,text=coralT,rounded corners=3pt,
+                   align=center,font=\small,inner sep=6pt,line width=0.6pt},
+  graybox/.style={draw=grayB,fill=grayF,text=grayT,rounded corners=3pt,
+                  align=center,font=\small,inner sep=6pt,line width=0.6pt},
+  arr/.style={-{Stealth[length=2.2mm]},line width=0.6pt,draw=black!70},
+  darr/.style={{Stealth[length=2.2mm]}-{Stealth[length=2.2mm]},line width=0.6pt,draw=black!70},
+  lbl/.style={font=\scriptsize,fill=white,inner sep=1.5pt,align=center},
+  zone/.style={draw=black!45,dashed,rounded corners=6pt,inner sep=0.45cm},
+  % Modèle C4
+  c4base/.style={rounded corners=4pt,align=center,inner sep=6pt,font=\scriptsize,
+                 minimum height=1.8cm,line width=0.6pt},
+  c4person/.style={c4base,fill=c4person,draw=c4personD,text=white,
+                   rounded corners=12pt,text width=#1},
+  c4person/.default=3.2cm,
+  c4head/.style={circle,fill=c4person,draw=c4personD,minimum size=0.95cm,line width=0.6pt},
+  c4system/.style={c4base,fill=c4system,draw=c4systemD,text=white,text width=#1},
+  c4system/.default=3.2cm,
+  c4ext/.style={c4base,fill=c4ext,draw=c4extD,text=white,text width=#1},
+  c4ext/.default=3.2cm,
+  c4cont/.style={c4base,fill=c4container,draw=c4containerD,text=white,text width=#1},
+  c4cont/.default=3cm,
+  c4multi/.style={c4cont=#1,double copy shadow={shadow xshift=4pt,shadow yshift=-4pt,
+                  fill=c4shadow,draw=c4containerD}},
+  c4multi/.default=3cm,
+  c4comp/.style={c4base,fill=c4component,draw=c4componentD,text=black,text width=#1},
+  c4comp/.default=3.2cm,
+  c4db/.style={cylinder,shape border rotate=90,aspect=0.18,fill=c4container,
+               draw=c4containerD,text=white,align=center,font=\scriptsize,
+               text width=#1,minimum height=2.1cm,inner sep=4pt,line width=0.6pt},
+  c4db/.default=2.8cm,
+  c4boundary/.style={draw=c4line,dashed,line width=0.8pt,rounded corners=6pt,inner sep=0.7cm},
+  c4rel/.style={-{Stealth[length=2.4mm]},dashed,line width=0.7pt,draw=c4line},
+  c4drel/.style={{Stealth[length=2.4mm]}-{Stealth[length=2.4mm]},dashed,line width=0.7pt,draw=c4line},
+  c4lbl/.style={font=\scriptsize,text=c4line,fill=white,inner sep=1.2pt,align=center,text width=#1},
+  c4lbl/.default=2.6cm,
+  % Diagramme de classes UML
+  umlclass/.style={rectangle split,rectangle split parts=3,draw=c4line,
+                   rectangle split part fill={c4component,white,white},
+                   text width=#1,font=\scriptsize,inner sep=4pt,line width=0.6pt},
+  umlclass/.default=4cm,
+  realize/.style={-{Triangle[open,length=3mm,width=3mm]},dashed,line width=0.6pt,draw=c4line},
+  assoc/.style={-{Stealth[length=2.2mm]},line width=0.6pt,draw=c4line},
+  depend/.style={-{Stealth[length=2.2mm]},dashed,line width=0.6pt,draw=c4line},
+}
+
+% =====================================================================
+\begin{document}
+% =====================================================================
+
+% ---------------------------------------------------------------------
+%  Page de garde (à compléter)
+% ---------------------------------------------------------------------
+\begin{titlepage}
+  \centering
+  {\large \textsc{Université de Tunis El Manar}\par}
+  \vspace{2pt}
+  {\normalsize Cycle ingénieur en informatique -- Spécialité Génie logiciel -- 3\textsuperscript{e} année IDL 01\par}
+  \vspace{0.5cm}
+  {\normalsize Module : \textit{Analyser et modélisation de l'architecture logicielle}\par}
+  \vspace{3cm}
+  \rule{\linewidth}{0.8pt}\par\vspace{0.4cm}
+  {\LARGE\bfseries Analyse et refonte de l'architecture\\[4pt]
+   du système \dnnTcs\par}
+  \vspace{0.3cm}
+  {\large Système parallèle collectif de deep learning pour la\\
+   reconnaissance de visages et la détection d'objets en temps réel\par}
+  \vspace{0.4cm}
+  \rule{\linewidth}{0.8pt}\par
+  \vspace{2.2cm}
+  \begin{tabular}{rl}
+    \textbf{Réalisé par :} & \textit{Douma Safa , Mrayhi Siwar et Ghazouani Farah}\\[4pt]
+    \textbf{Encadré par :} & \textit{Maher Helaoui}\\
+  \end{tabular}
+  \vfill
+  {\normalsize Article étudié : M.~Helaoui et S.~Bahroun, \textit{Parallel Collective Tiny Deep Learning System for Face and Object Reidentification in Uncontrolled Environments}, Research Square, 2025.\par}
+  \vspace{0.8cm}
+  {\large Année universitaire 2026--2027\par}
+\end{titlepage}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% ---------------------------------------------------------------------
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+\markboth{Introduction générale}{}
+% ---------------------------------------------------------------------
+
+Les systèmes de vision par ordinateur embarqués (lunettes intelligentes pour personnes malvoyantes, véhicules autonomes, vidéosurveillance intelligente) doivent concilier deux exigences contradictoires : réagir en temps réel sur un équipement aux ressources limitées, et atteindre une précision élevée, qui nécessite généralement des modèles de deep learning volumineux.
+
+L'article de Helaoui et Bahroun~\cite{helaoui2025} propose une réponse à ce compromis avec le système \dnnTcs{} (\emph{Parallel Collective Tiny Deep Learning client-server System}). Ce système exécute en parallèle plusieurs versions de modèles de reconnaissance (visages, émotions, genre, objets) sur un client léger et sur un serveur puissant, combine leurs résultats de manière \og collective \fg{} et s'appuie sur des objets connectés (approche \og Tiny \fg) pour sélectionner la meilleure réponse.
+
+Ce rapport a trois objectifs :
+\begin{enumerate}
+  \item \textbf{comprendre et expliquer} ce que fait le système et sur quels fondements il repose ;
+  \item \textbf{analyser son architecture actuelle}, caractériser le style architectural réellement mis en œuvre et en identifier les faiblesses ;
+  \item \textbf{proposer une nouvelle architecture}, mieux adaptée aux exigences du système, justifier ce choix et la documenter selon le \textbf{modèle C4}~\cite{brownC4}.
+\end{enumerate}
+
+Le chapitre~\ref{ch:systeme} présente le système étudié. Le chapitre~\ref{ch:analyse} analyse son architecture actuelle. Le chapitre~\ref{ch:exigences} formalise les exigences et compare les styles architecturaux candidats. Le chapitre~\ref{ch:proposition} décrit l'architecture proposée, et le chapitre~\ref{ch:c4} la modélise selon les niveaux du modèle C4.
+
+% =====================================================================
+\chapter{Présentation du système étudié}\label{ch:systeme}
+% =====================================================================
+
+\section{Contexte et objectifs}
+
+Le système \dnnTcs{} vise à assister une machine autonome dans sa prise de décision à partir de ce qu'elle perçoit par une caméra. Le nom du système résume son principe :
+
+\begin{table}[H]
+\centering
+\caption{Décomposition du nom du système}
+\label{tab:nom}
+\begin{tabularx}{0.85\textwidth}{>{\bfseries}l L}
+\toprule
+\rowcolor{headgray}\textbf{Élément} & \textbf{Signification}\\
+\midrule
+DNN & \emph{Deep Neural Network} : réseau de neurones profond au sens large (CNN, RNN, etc.)\\
+$/\!/$ & Parallèle : les calculs sont répartis sur plusieurs processeurs\\
+$^{*}$ & Collectif : plusieurs versions de modèles coopèrent pour produire un résultat commun\\
+T & \emph{Tiny} : utilisation de microcontrôleurs (approche TinyML)\\
+$cs$ & \emph{Client-server} : répartition des traitements entre un client et un serveur\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Le problème traité est un compromis classique en vision embarquée. Un modèle léger (par exemple YOLOv8n) s'exécute rapidement sur un smartphone mais commet davantage d'erreurs ; un modèle lourd (YOLOv8x) est plus précis mais trop coûteux pour l'appareil. De plus, les auteurs constatent qu'aucun modèle n'est le meilleur dans toutes les conditions (éclairage, pose du visage, occlusions) : selon l'environnement, une méthode peut en dominer une autre.
+
+\section{Les services fournis}
+
+Le système fournit quatre services de perception :
+\begin{itemize}
+  \item \textbf{reconnaissance de visages} : identifier la personne présente dans l'image ;
+  \item \textbf{reconnaissance d'émotions} : reconnaître l'état émotionnel (joie, colère, peur, surprise, etc.) ;
+  \item \textbf{détection du genre} ;
+  \item \textbf{détection d'objets} : localiser et classer les objets de la scène (bateau, voiture, animal, etc.) à l'aide de YOLOv8.
+\end{itemize}
+
+\section{Principe de fonctionnement : parallèle, collectif et Tiny}
+
+La solution proposée combine trois idées.
+
+\paragraph{Le parallélisme.} Il permet d'exécuter plusieurs modèles simultanément sans perdre la réactivité, mais aussi de paralléliser les calculs à l'intérieur d'un même réseau, en calculant les neurones d'une même couche en même temps.
+
+\paragraph{Le collectif.} Plutôt que de faire confiance à un seul modèle, le système exécute plusieurs versions (CNN, RNN, différentes tailles de YOLOv8, etc.) sur la même image et combine leurs résultats. Le client exécute des versions légères et produit une réponse locale ; le serveur exécute des versions plus précises et renvoie une \textbf{alerte} au client lorsque son résultat diffère.
+
+\paragraph{Le Tiny.} Chaque objet réel peut être équipé d'un microcontrôleur (une carte Arduino dans le prototype) qui transmet directement son identité, sa position et ses dimensions. Ces données servent de référence pour choisir, parmi les versions exécutées, celle dont le résultat est le plus fiable.
+
+\section{Cas d'usage : lunettes intelligentes pour personnes malvoyantes}
+
+L'article illustre le système par des lunettes permettant à une personne malvoyante de bénéficier, en temps réel, des informations accessibles à une personne voyante. Le problème global $P$ est décomposé en trois sous-problèmes exécutés en parallèle :
+\begin{itemize}
+  \item $P_1$ : reconnaître et classer les objets (auquel s'ajoutent en parallèle la reconnaissance de visages, du genre et des émotions) ;
+  \item $P_2$ : éviter les objets dynamiques, en estimant leur trajectoire ;
+  \item $P_3$ : éviter les obstacles statiques, grâce à deux capteurs de position.
+\end{itemize}
+Les auteurs indiquent que ce cas se généralise à la vidéosurveillance intelligente et aux véhicules autonomes.
+
+\section{Fondements théoriques}
+
+\subsection{Structure d'évaluation}
+Pour combiner les résultats de plusieurs modèles, les auteurs utilisent une structure d'évaluation $S = (E, \le, \otimes)$ : un ensemble ordonné de valeurs $E$, un opérateur de comparaison $\le$ et un opérateur de combinaison $\otimes$ commutatif, associatif et monotone :
+\begin{equation}
+  \alpha \le \beta \;\Rightarrow\; \alpha \otimes \lambda \le \beta \otimes \lambda,
+  \qquad \forall\, \alpha,\beta,\lambda \in E.
+\end{equation}
+
+\subsection{DNN parallèle}
+En reprenant les travaux de Lee et al.~\cite{lee2017}, les auteurs remarquent que les couches d'un réseau sont dépendantes (une couche utilise la sortie de la précédente) alors que les neurones d'une même couche sont indépendants. D'après le théorème de Brent et la loi d'Amdahl, le nombre optimal de processeurs pour accélérer un réseau est donc au moins égal au nombre de neurones par couche $|N^l|$ (lemme~1). Le temps de calcul d'une couche se réduit alors à celui d'un seul neurone, augmenté du coût de communication.
+
+\subsection{DNN parallèle collectif}
+Un algorithme \og parallèle collectif \fg{} est défini comme la combinaison des résultats de plusieurs versions parallèles :
+\begin{equation}
+  \mathrm{DNN}/\!/^{*} = \bigotimes \mathrm{DNN}/\!/,
+  \qquad
+  \mathrm{DNN}/\!/^{*}_{cs} = \Big(\bigotimes \dnnc\Big) \otimes \Big(\bigotimes \dnns\Big).
+\end{equation}
+
+\subsection{Nombre optimal de processeurs}
+Côté client, pour $N_O$ objets et $N_F$ visages dans une image, avec $\alpha_c$ analyses par objet et $\beta_c$ analyses par visage (théorème~3) :
+\begin{equation}
+  P^{*}_{c} = (\alpha_c N_O + \beta_c N_F)\times |N^{l}_{c}|.
+\end{equation}
+Par exemple, avec une analyse par objet (détection), trois analyses par visage (identité, genre, émotion), deux objets, un visage et 64 neurones par couche : $P^{*}_{c} = (2 + 3)\times 64 = 320$ processeurs.
+
+Côté serveur, avec $k_1$ versions de DNN et $k_2$ algorithmes d'apprentissage supplémentaires (théorème~4) :
+\begin{equation}
+  P^{*}_{s} = k_1(\alpha_s N_O + \beta_s N_F)\times |N^{l}_{s}| + k_2 .
+\end{equation}
+
+\subsection{Approche Tiny}
+Les théorèmes~1 et~2 affirment que si chaque objet (ou chaque personne) est connecté et transmet lui-même ses caractéristiques (classe ou identité, position, dimensions), alors la détection d'objets et l'identification de visages se réduisent à de petits programmes exécutables sur microcontrôleur.
+
+\section{Résultats annoncés}
+
+\begin{table}[H]
+\centering
+\caption{Synthèse des résultats expérimentaux de l'article}
+\label{tab:resultats}
+\begin{tabularx}{\textwidth}{l L L}
+\toprule
+\rowcolor{headgray}\textbf{Jeu de données} & \textbf{Versions classiques} & \textbf{Version Tiny}\\
+\midrule
+Multi-PIE (visages) & Client seul : 87 à 94\,\% ; versions serveur : 97 à 99,7\,\% & 100\,\% (identité transmise par une application mobile)\\
+Bosphorus (émotions) & 86 à 100\,\% selon l'émotion & 100\,\% (émotion transmise par l'utilisateur)\\
+YouTube-BoundingBoxes étendu (objets) & Nombreuses fausses détections de YOLOv8n et YOLOv8m & Aucune fausse détection (objets supposés connectés)\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Ces résultats doivent être interprétés avec prudence : les scores de 100\,\% découlent directement de l'hypothèse selon laquelle l'identité réelle est transmise par l'objet ou la personne elle-même.
+
+% =====================================================================
+\chapter{Analyse de l'architecture actuelle}\label{ch:analyse}
+% =====================================================================
+
+\section{Vue d'ensemble}
+
+L'architecture décrite dans l'article s'organise autour de trois types d'acteurs : des clients (dispositifs mobiles), un serveur puissant et des objets connectés dits \og Tiny \fg. La figure~\ref{fig:actuelle} en donne une vue synthétique, reconstituée à partir des figures~1, 2 et~11 de l'article.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \node[purplebox,text width=3.6cm] (cl) at (0,0)
+    {\textbf{Clients 1\ldots n}\\[2pt]\scriptsize Version lite (\dnnc)\\
+     \scriptsize\ms{MSParallelCollective-}\\\scriptsize\ms{Request}};
+  \node[graybox,text width=2.8cm] (gw) at (5,0)
+    {\textbf{Gateway}\\[2pt]\scriptsize Endpoints REST\\\scriptsize Rest 1\ldots n};
+  \node[tealbox,text width=4.8cm] (sv) at (10.6,0)
+    {\textbf{Serveur (\dnns)}\\[2pt]\scriptsize P1 : reconnaissance de visage\\
+     \scriptsize P2 : détection d'objets\\\scriptsize P3 : détection du genre\\
+     \scriptsize P4 : reconnaissance d'émotions\\\scriptsize\ms{MSParallelCollectiveManager}};
+  \node[coralbox,text width=4.2cm] (ti) at (5,-3.6)
+    {\textbf{Objets Tiny O1\ldots Om}\\[2pt]\scriptsize Cartes Arduino\\
+     \scriptsize\ms{MSTinyParallelCollective}};
+  \draw[darr] (cl) -- node[lbl,above=2pt]{requêtes\\alertes} (gw);
+  \draw[darr] (gw) -- node[lbl,above=2pt]{REST} (sv);
+  \draw[arr] (ti.west) -| node[lbl,pos=0.3,above]{données certaines} (cl.south);
+  \draw[arr] (ti.east) -| node[lbl,pos=0.3,above]{données Tiny} (sv.south);
+\end{tikzpicture}
+\caption{Architecture actuelle : clients, gateway REST, serveur multi-services et objets Tiny}
+\label{fig:actuelle}
+\end{figure}
+
+\section{Architecture logique}
+
+\paragraph{Version client-serveur simple (figure~1 de l'article).} Plusieurs clients accèdent, via une gateway et des endpoints REST, à un serveur qui héberge les quatre services. Chaque service est affecté à un processeur : le processeur~1 pour la reconnaissance de visage, le~2 pour la détection d'objets, le~3 pour le genre et le~4 pour les émotions.
+
+\paragraph{Version Tiny (figure~2 de l'article).} Un troisième niveau est ajouté : les \og Tiny Services \fg{} (objets O1\ldots Om). Chaque client embarque le micro-service \ms{MSParallelCollectiveRequest} et reçoit une éventuelle correction à la fois du serveur et des objets connectés.
+
+\paragraph{Gestionnaire collectif (figure~11 de l'article).} La coordination repose sur trois composants, décrits dans le tableau~\ref{tab:composants-actuels}.
+
+\begin{table}[H]
+\centering
+\caption{Composants du gestionnaire parallèle collectif}
+\label{tab:composants-actuels}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} l L}
+\toprule
+\rowcolor{headgray}\textbf{Composant} & \textbf{Emplacement} & \textbf{Rôle}\\
+\midrule
+\ms{MSParallelCollective\-Request} (algo.~13) & Client & Envoie une requête à chaque service, reçoit directement certaines données des objets Tiny puis le résultat collectif final.\\
+\ms{MSTinyParallel\-Collective} (algo.~14) & Microcontrôleur & Envoie les données de l'objet au client (si demandé) et systématiquement au serveur.\\
+\ms{MSParallelCollective\-Manager} (algo.~15) & Serveur & Compare les versions d'un même service, choisit celle de meilleure confiance (calculée avec les données Tiny) et n'envoie que ce résultat au client.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Flux d'exécution}
+
+\paragraph{Côté client (algorithme~1 de l'article).}
+\begin{enumerate}
+  \item \ms{Collect()} capture l'image ou la vidéo ;
+  \item \ms{Share(i, d)} l'envoie au serveur avec des requêtes (version plus précise du DNN, $k_1$ autres versions, $k_2$ algorithmes d'apprentissage) ;
+  \item le client exécute localement, en parallèle, un \dnnc{} par objet et par analyse, puis par visage et par analyse ;
+  \item \ms{SendResult(cr)} transmet son résultat combiné au serveur ;
+  \item \ms{Receive()} récupère une éventuelle alerte ;
+  \item \ms{ManagerClient(cr, alert)} détermine le résultat présenté à l'utilisateur.
+\end{enumerate}
+
+\paragraph{Côté serveur (algorithme~2 de l'article).}
+\begin{enumerate}
+  \item \ms{ReceiveShared()} reçoit l'image et les requêtes ;
+  \item \ms{ParallelRun()} exécute en parallèle $k_1$ versions (CNN, DNN, RNN\ldots) et $k_2$ algorithmes d'apprentissage, chacune parallélisée par objet et par visage ;
+  \item \ms{ReceiveResult()} récupère le résultat calculé par le client ;
+  \item \ms{ManagerServer()} compare les deux résultats et produit une alerte en cas de différence ;
+  \item \ms{Send(alert)} renvoie la correction au client.
+\end{enumerate}
+
+\section{Architecture matérielle recommandée}
+
+Sur le dispositif, les auteurs proposent un système multi-agents d'environnement 70 agents, idéalement un agent par cœur : de 8 à 64 cœurs pour $P_1$ (un par neurone du modèle léger, soit idéalement huit processeurs octa-cœurs à mémoire distribuée), au moins un cœur pour $P_2$ et au moins un cœur pour $P_3$. Sur le serveur, la même logique est appliquée à plus grande échelle : au moins 512 cœurs pour le DNN principal, plus $512 \times k$ cœurs pour les $k$ autres versions.
+
+\section{Architecture du prototype}
+
+Le prototype a été réalisé sur un ordinateur portable (processeur Intel Core i3 à 4 cœurs, 12\,Go de mémoire, Ubuntu 22.04), en Python avec les bibliothèques \ms{multiprocessing}, OpenCV, Ultralytics YOLOv8, Keras et pyttsx3. Chaque cœur héberge un service, lui-même découpé en \og micro-services \fg{} qui sont en réalité des processus.
+
+\begin{table}[H]
+\centering
+\caption{Organisation du prototype : un service par processeur}
+\label{tab:prototype}
+\begin{tabularx}{\textwidth}{l l L}
+\toprule
+\rowcolor{headgray}\textbf{Processeur} & \textbf{Service} & \textbf{Processus (\og micro-services \fg)}\\
+\midrule
+1 & Reconnaissance de visage (LBPH, puis CNN) & P1 \ms{MSLBPHFaceRecognition}, P2 \ms{MSShowResult}, P3 \ms{MSSayResult}, P4 \ms{MSFaceDynamicDataSet}, P5 \ms{MSFaceDynamicTraining}\\
+2 & Détection d'objets (YOLOv8n) & P1 \ms{MSLunchPredict}, P2 \ms{MSInit}, P3 \ms{MSColor}, P4 \ms{MSConfig}, P5 \ms{MSStartPredictor}, P6 \ms{MSSayResult}, P7 \ms{MSDetectionShowResult}, P8 \ms{MSTrackerShowResult}\\
+3 & Détection du genre (DNN, Keras) & P1 \ms{MSDetectGender}, P2 \ms{MSDNNDetectFaces}, P3 \ms{MSSayResult}, P4 \ms{MSShowResult}\\
+4 & Reconnaissance d'émotions (DNN, Keras) & P1 \ms{MSEmotionRecognition}, P2 \ms{MSDNNEmotionRecognition}, P3 \ms{MSSayResult}, P4 \ms{MSShowResult}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+La figure~\ref{fig:proc1} détaille le service de reconnaissance de visage. Lorsque la confiance dépasse 60\,\%, le processus~4 capture 30 nouvelles images du visage, puis le processus~5 réentraîne le modèle et le service est redémarré. Grâce à ce jeu de données dynamique, la confiance passe de 30--45\,\% à plus de 60\,\% ; une seconde version fondée sur un CNN atteint 96\,\%.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \tikzset{pb/.style={purplebox,text width=3.7cm,font=\scriptsize}}
+  \node[pb] (p1) at (0,0) {\textbf{Processus 1}\\\ms{MSLBPHFaceRecognition}};
+  \node[pb] (p2) at (4.7,1.3) {\textbf{Processus 2}\\\ms{MSShowResult}};
+  \node[pb] (p3) at (4.7,-1.3) {\textbf{Processus 3}\\\ms{MSSayResult}};
+  \node[pb] (p4) at (9.6,1.3) {\textbf{Processus 4}\\\ms{MSFaceDynamicDataSet}};
+  \node[pb] (p5) at (9.6,-1.3) {\textbf{Processus 5}\\\ms{MSFaceDynamicTraining}};
+  \draw[arr] (p1.east) -- (p2.west);
+  \draw[arr] (p1.east) -- (p3.west);
+  \draw[arr] (p2) -- node[lbl,above=2pt]{confiance $>60\,\%$} (p4);
+  \draw[arr] (p4) -- node[lbl,right=2pt]{30 images} (p5);
+  \draw[arr,dashed] (p5.south) -- ++(0,-0.8) -| node[lbl,pos=0.25,below]{redémarrage de tout le service} (p1.south);
+  \begin{scope}[on background layer]
+    \node[zone,fit=(p1)(p2)(p3)(p4)(p5),label={[font=\scriptsize\bfseries,anchor=south west]north west:Processeur 1 (une seule machine)}] {};
+  \end{scope}
+\end{tikzpicture}
+\caption{Prototype : service de reconnaissance de visage découpé en processus}
+\label{fig:proc1}
+\end{figure}
+
+Les services de genre et d'émotion suivent un schéma en boucle : le processus~1 lit une image, le processus~2 exécute le réseau, les processus~3 et~4 affichent et prononcent le résultat, puis le processus~1 est rappelé.
+
+\section{Caractérisation du style architectural}
+
+\subsection{Une architecture client-serveur à client lourd}
+Au niveau global, il s'agit bien d'une architecture client-serveur, comme l'indique le nom du système. Il ne s'agit toutefois pas d'un client léger : le client exécute lui-même des modèles et produit un résultat local. Le serveur ne travaille pas à sa place ; il refait le calcul avec des modèles plus lourds et joue un rôle de \textbf{correcteur}. Le schéma est donc de type \og calcul local et vérification distante \fg.
+
+\subsection{Une extension à trois tiers}
+L'ajout des objets Tiny introduit un troisième niveau qui communique à la fois avec le client et le serveur. Dans le vocabulaire actuel, cette organisation s'apparente à une architecture \emph{edge}/\emph{cloud} associée à l'Internet des objets~\cite{shi2016} : objets connectés (terrain), dispositif mobile (edge) et serveur (cloud), même si les auteurs n'emploient pas ces termes.
+
+\subsection{Le patron API Gateway}
+Les clients accèdent au serveur par une passerelle unique suivie d'endpoints REST, ce qui correspond au patron \emph{API Gateway}, caractéristique des architectures orientées services.
+
+\subsection{S'agit-il d'une architecture microservices ?}
+L'article qualifie ses composants de micro-services (préfixe \og MS \fg). Le tableau~\ref{tab:microservices} les confronte aux critères usuels de ce style~\cite{fowler2014,newman2021}.
+
+\begin{table}[H]
+\centering
+\caption{Confrontation du prototype aux critères d'une architecture microservices}
+\label{tab:microservices}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} L c}
+\toprule
+\rowcolor{headgray}\textbf{Critère} & \textbf{Situation dans le système actuel} & \textbf{Respecté}\\
+\midrule
+Déploiement indépendant & Tous les composants appartiennent au même programme et sont lancés ensemble & Non\\
+Communication réseau légère & Appels directs de processus (\ms{RunProcess2(\ldots)}), sans réseau & Non\\
+Organisation par capacité métier & Oui pour visage, objets, genre et émotion ; non pour \ms{MSShowResult} ou \ms{MSSayResult}, simples fonctions techniques & Partiel\\
+Données propres à chaque service & Le dossier du jeu de données de visages est partagé entre plusieurs composants & Non\\
+Mise à l'échelle indépendante & Chaque service est lié à un processeur fixe & Non\\
+Isolation des pannes & Chaînes d'appels récursives (\ms{MSDetectGender} $\rightarrow$ \ms{MSDNNDetectFaces} $\rightarrow$ \ms{MSDetectGender}) : un maillon défaillant arrête la boucle & Non\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Le cas du réentraînement est révélateur : après \ms{MSFaceDynamicTraining}, tout le service est redémarré, alors qu'une architecture microservices ne redéploierait que le service concerné. \textbf{L'intention est donc orientée services, mais l'implémentation correspond à un monolithe modulaire multi-processus} : une seule application, découpée en modules exécutés dans des processus distincts sur une même machine.
+
+\subsection{Synthèse}
+L'architecture actuelle peut être caractérisée ainsi : \emph{une architecture client-serveur à client lourd, étendue à trois tiers par des objets connectés, dont l'accès au serveur passe par une API Gateway et des services REST, et dont chaque service est implémenté comme un ensemble de processus d'une même application (monolithe modulaire multi-processus).}
+
+\section{Points faibles identifiés}
+
+\begin{table}[H]
+\centering
+\caption{Faiblesses de l'architecture actuelle et leurs conséquences}
+\label{tab:faiblesses}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.8cm} L}
+\toprule
+\rowcolor{headgray}\textbf{Faiblesse} & \textbf{Conséquence}\\
+\midrule
+Faux micro-services (processus d'un même programme) & Impossible de déployer, mettre à jour ou mettre à l'échelle un service seul\\
+Couplage rigide entre matériel et logiciel (\og un service par processeur \fg, \og un processeur par neurone \fg) & Architecture non portable ; en pratique, la parallélisation des neurones est assurée par les GPU et accélérateurs, pas par des cœurs CPU dédiés\\
+Communication synchrone par REST & Mal adaptée à un flux vidéo continu ; latence accrue par l'attente des réponses\\
+Gestionnaire collectif centralisé & Point de défaillance unique, pas de mode dégradé ni de tolérance aux pannes\\
+Fusion par \og meilleure confiance \fg & Les scores de modèles différents ne sont pas calibrés, donc pas directement comparables\\
+Hypothèse Tiny très forte (tout objet est connecté) & Scores de 100\,\% quasi tautologiques ; hypothèse irréaliste dans la plupart des environnements, comme le reconnaissent les auteurs\\
+Absence de mesures de latence & L'exigence de temps réel, argument central, n'est pas démontrée\\
+Absence de sécurité et de protection des données & Des données biométriques (visages) circulent et sont stockées sans protection décrite\\
+Réentraînement avec redémarrage & Interruption du service pendant la mise à jour du modèle\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =====================================================================
+\chapter{Exigences et choix du style architectural}\label{ch:exigences}
+% =====================================================================
+
+\section{Attributs de qualité attendus}
+
+Le choix d'une architecture doit partir des exigences et des attributs de qualité~\cite{richards2020}, et non des technologies. Le tableau~\ref{tab:exigences} les recense.
+
+\begin{table}[H]
+\centering
+\caption{Exigences et attributs de qualité du système}
+\label{tab:exigences}
+\begin{tabularx}{\textwidth}{c >{\raggedright\arraybackslash}p{3.6cm} L c}
+\toprule
+\rowcolor{headgray}\textbf{N\textsuperscript{o}} & \textbf{Exigence} & \textbf{Description} & \textbf{Priorité}\\
+\midrule
+E1 & Temps réel & Une personne malvoyante ou un véhicule ne peut pas attendre une réponse distante pour réagir & Haute\\
+E2 & Traitement de flux & Les données sont des flux vidéo continus, pas des requêtes ponctuelles & Haute\\
+E3 & Exécution collective & Plusieurs versions d'un même modèle traitent la même image et leurs résultats sont combinés & Haute\\
+E4 & Extensibilité & Ajouter un nouveau modèle ou une nouvelle version sans modifier le reste du système & Haute\\
+E5 & Hétérogénéité & Microcontrôleurs, smartphones et serveurs GPU coexistent & Moyenne\\
+E6 & Disponibilité & Le dispositif doit continuer à fonctionner si le réseau est coupé & Haute\\
+E7 & Confidentialité & Les visages sont des données biométriques sensibles (RGPD) & Haute\\
+E8 & Scalabilité & Nombreux clients simultanés et charge variable & Moyenne\\
+E9 & Observabilité & Mesurer la latence et la précision de chaque version & Moyenne\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Styles architecturaux candidats}
+
+Quatre options ont été étudiées.
+
+\paragraph{Monolithe embarqué.} Tout est exécuté sur le dispositif. Cette option offre le meilleur temps de réponse et fonctionne hors ligne, mais les ressources limitées empêchent d'exécuter plusieurs versions lourdes : l'exigence collective (E3) est sacrifiée.
+
+\paragraph{Client-serveur REST (architecture actuelle).} Le principe de correction par le serveur est pertinent, mais le couplage fort, la communication synchrone et l'absence d'isolation limitent la réactivité, l'extensibilité et la disponibilité.
+
+\paragraph{Microservices entièrement dans le cloud.} Cette option offre une excellente extensibilité et scalabilité, mais toute décision dépend du réseau : elle est incompatible avec le temps réel (E1) et le fonctionnement hors ligne (E6).
+
+\paragraph{Architecture hybride Edge--Cloud orientée événements.} La décision immédiate est prise sur le dispositif, tandis que le cloud, organisé en microservices communiquant par événements, exécute les versions lourdes et renvoie des corrections de manière asynchrone.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des styles architecturaux candidats}
+\label{tab:comparaison}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm} L L L L l}
+\toprule
+\rowcolor{headgray}\textbf{Style} & \textbf{Temps réel} & \textbf{Collectif et extensibilité} & \textbf{Hors ligne} & \textbf{Scalabilité} & \textbf{Verdict}\\
+\midrule
+Monolithe embarqué & Bon & Très faible & Oui & Aucune & Rejeté\\
+Client-serveur REST (actuel) & Moyen & Faible & Partiel & Limitée & À améliorer\\
+Microservices 100\,\% cloud & Mauvais & Très bon & Non & Très bonne & Rejeté\\
+\rowcolor{rowgray}\textbf{Edge--Cloud orienté événements} & \textbf{Bon} & \textbf{Très bon} & \textbf{Oui} & \textbf{Très bonne} & \textbf{Retenu}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Style retenu}
+
+Le style retenu est une \textbf{architecture hybride Edge--Fog--Cloud, orientée événements, avec de véritables microservices côté cloud}. Elle conserve les idées fondatrices de l'article (client léger, serveur correcteur, exécution collective, apport des objets connectés) tout en les implémentant avec des patrons éprouvés.
+
+% =====================================================================
+\chapter{Architecture proposée}\label{ch:proposition}
+% =====================================================================
+
+\section{Vue d'ensemble en couches}
+
+Le système est organisé en couches selon la distance au terrain : plus on s'éloigne de l'utilisateur, plus la puissance de calcul augmente, mais plus la latence augmente également (figure~\ref{fig:couches}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \node[purplebox,text width=13.2cm] (cloud) at (0,4.3)
+    {\textbf{Cloud (Kubernetes, GPU)}\\[2pt]\scriptsize Modèles lourds multi-versions, service de fusion collective, alertes, MLOps, supervision};
+  \node[purplebox,text width=13.2cm] (fog) at (0,2.15)
+    {\textbf{Edge local (fog) -- optionnel}\\[2pt]\scriptsize Modèles intermédiaires, broker MQTT, faible latence (véhicule, bâtiment, boîtier 5G)};
+  \node[purplebox,text width=6.2cm] (dev) at (-3.5,0)
+    {\textbf{Dispositif (lunettes, mobile, véhicule)}\\[2pt]\scriptsize Modèles légers quantifiés, décision locale immédiate};
+  \node[coralbox,text width=6.2cm] (iot) at (3.5,0)
+    {\textbf{Objets connectés (IoT)}\\[2pt]\scriptsize Identité, position et dimensions via MQTT ou BLE};
+  \draw[darr] (cloud) -- (fog);
+  \draw[darr] (dev.north) -- (dev.north |- fog.south);
+  \draw[arr] (iot.north) -- (iot.north |- fog.south);
+  \draw[darr] (dev) -- (iot);
+  \draw[-{Stealth[length=3mm]},line width=1.2pt,draw=black!40] (-7.4,-0.5) -- (-7.4,4.8)
+    node[midway,rotate=90,above,font=\scriptsize,text=black!60]{puissance et latence croissantes};
+\end{tikzpicture}
+\caption{Architecture proposée : vue d'ensemble en couches}
+\label{fig:couches}
+\end{figure}
+
+\paragraph{Le dispositif (edge device).} Il exécute des modèles légers et quantifiés (par exemple YOLOv8n et un petit CNN de visage) et \textbf{prend lui-même la décision immédiate}. Il garantit ainsi le temps réel et le fonctionnement hors ligne.
+
+\paragraph{L'edge local (fog)~\cite{bonomi2012}.} Petit serveur proche de l'utilisateur (embarqué dans le véhicule, installé dans le bâtiment surveillé ou relié en Wi-Fi/5G), il exécute des modèles intermédiaires avec une latence de quelques millisecondes et héberge le broker MQTT qui collecte les données des objets connectés. Cette couche est optionnelle : pour des lunettes utilisées en extérieur, le dispositif peut communiquer directement avec le cloud.
+
+\paragraph{Le cloud.} Il exécute les modèles lourds (YOLOv8l et YOLOv8x, plusieurs versions de CNN), réalise la fusion collective et gère le cycle de vie des modèles.
+
+\paragraph{Les objets connectés.} Ils publient leur identité et leur position. Ils deviennent une \textbf{source d'information supplémentaire} dans la fusion et non plus une condition indispensable, ce qui corrige l'hypothèse irréaliste de l'architecture initiale.
+
+\section{Le cœur cloud orienté événements}
+
+C'est dans le cloud que l'idée de \og parallèle collectif \fg{} trouve son implémentation naturelle (figure~\ref{fig:cloud}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \tikzset{sv/.style={purplebox,text width=2.7cm,font=\scriptsize}}
+  \node[graybox,text width=5cm] (ing) at (0,0) {\textbf{Ingestion (API Gateway)}\\\scriptsize Authentification, TLS, gRPC};
+  \node[graybox,text width=13.2cm] (kafka) at (0,-1.7) {\textbf{Broker d'événements (Apache Kafka)}\\\scriptsize Topics : images, prédictions, IoT, décisions};
+  \node[sv] (s1) at (-5.1,-3.6) {\textbf{Visage}\\v1 LBPH, v2 CNN};
+  \node[sv] (s2) at (-1.7,-3.6) {\textbf{Objets}\\YOLOv8 m, l, x};
+  \node[sv] (s3) at (1.7,-3.6) {\textbf{Genre}\\CNN v1, v2};
+  \node[sv] (s4) at (5.1,-3.6) {\textbf{Émotion}\\CNN v1, v2};
+  \node[tealbox,text width=5.4cm] (fus) at (0,-5.7) {\textbf{Service de fusion collective}\\\scriptsize Scatter-Gather, calibration, vote pondéré};
+  \node[coralbox,text width=2.4cm] (iot) at (5.1,-5.7) {\textbf{Données IoT}\\\scriptsize via pont MQTT};
+  \node[graybox,text width=2.4cm] (reg) at (-5.1,-5.7) {\textbf{Registre}\\\scriptsize MLflow};
+  \node[tealbox,text width=5.4cm] (al) at (0,-7.7) {\textbf{Service d'alertes}\\\scriptsize Push WebSocket ou MQTT};
+  \draw[arr] (ing) -- (kafka);
+  \foreach \s in {s1,s2,s3,s4} { \draw[darr] (\s.north |- kafka.south) -- (\s.north); }
+  \foreach \s in {s1,s2,s3,s4} { \draw[arr] (\s.south) -- (fus.north); }
+  \draw[arr] (iot) -- (fus);
+  \draw[arr,dashed] (reg) -- node[lbl,left=1pt]{versions} (s1);
+  \draw[arr] (fus) -- (al);
+\end{tikzpicture}
+\caption{Cœur cloud : microservices d'inférence et fusion collective orientés événements}
+\label{fig:cloud}
+\end{figure}
+
+\paragraph{Ingestion (API Gateway).} Point d'entrée unique, elle gère l'authentification, le chiffrement TLS et la limitation de débit. Elle ne traite pas l'image mais la publie dans le broker. Pour la vidéo, gRPC en streaming ou MQTT remplacent REST, qui impose d'ouvrir une requête et d'attendre la réponse pour chaque image.
+
+\paragraph{Broker d'événements.} Apache Kafka~\cite{kreps2011} remplace les appels directs entre services. Chaque image devient un événement publié sur un \emph{topic} ; tous les services abonnés le reçoivent simultanément. Ce patron \textbf{Publish/Subscribe}~\cite{hohpe2003} réalise exactement l'exécution parallèle collective de l'article : une même image est traitée en même temps par toutes les versions, sans qu'aucun service ne connaisse les autres.
+
+\paragraph{Services d'inférence.} Un microservice par tâche ; chaque version de modèle est déployée comme une instance séparée, dans son propre conteneur, avec un serveur d'inférence de type Triton ou TorchServe sur GPU. Ajouter une nouvelle version (YOLOv9 par exemple) revient à déployer un conteneur supplémentaire abonné au même topic, sans modifier le reste du système : c'est le principe ouvert/fermé appliqué à l'architecture.
+
+\paragraph{Service de fusion collective.} Il remplace \ms{MSParallelCollectiveManager} en l'améliorant. Il regroupe les réponses des différentes versions pour une même image (patron \textbf{Scatter-Gather}) avec un délai maximal : une version trop lente est ignorée. Les scores sont d'abord \textbf{calibrés}~\cite{guo2017} pour être comparables, puis combinés par un \textbf{vote pondéré} dans lequel les données IoT, lorsqu'elles existent, constituent une preuve de poids élevé (algorithme~\ref{alg:fusion}).
+
+\paragraph{Service d'alertes.} Il compare le résultat fusionné à la décision déjà prise par le dispositif et ne pousse une correction \textbf{qu'en cas de désaccord}, ce qui économise la bande passante.
+
+\paragraph{Services transverses.} Le registre de modèles et le pipeline MLOps (MLflow) remplacent le réentraînement avec redémarrage : les modèles sont réentraînés en arrière-plan puis déployés progressivement, sans interruption. La supervision (Prometheus, Grafana) mesure la latence et la précision de chaque version, ce qui permet de démontrer l'exigence de temps réel.
+
+\begin{algorithm}[H]
+\caption{Fusion collective d'une image (Scatter-Gather et vote pondéré)}
+\label{alg:fusion}
+\begin{algorithmic}[1]
+\Require image $f$, ensemble $V$ des versions actives, délai maximal $\Delta$, poids $w_v$ de chaque version, poids $\lambda$ de la preuve IoT
+\Ensure décision fusionnée $D$
+\State $R \gets \emptyset$
+\While{$|R| < |V|$ \textbf{et} temps écoulé $< \Delta$}
+  \State $r \gets$ \Call{AttendrePrediction}{$f$}
+  \State $R \gets R \cup \{\Call{Calibrer}{r}\}$
+\EndWhile
+\State $I \gets$ \Call{DonneesIoT}{$f$} \Comment{peut être vide}
+\ForAll{étiquette candidate $\ell$}
+  \State $s(\ell) \gets \sum_{r \in R,\; r.\mathit{label}=\ell} w_{r.\mathit{version}} \cdot r.\mathit{score} \;+\; \lambda \cdot [\ell \in I]$
+\EndFor
+\State $D \gets \arg\max_{\ell}\, s(\ell)$
+\If{$D \neq$ décision locale du dispositif}
+  \State \Call{PublierAlerte}{$f, D$}
+\EndIf
+\State \Return $D$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Architecture interne du dispositif}
+
+La règle fondamentale est la suivante : \textbf{le dispositif ne dépend jamais du cloud pour agir} (figure~\ref{fig:dispositif}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \tikzset{db/.style={purplebox,text width=2.6cm}}
+  \node[db] (cap) at (0,0) {\textbf{Capture}\\\scriptsize Flux caméra};
+  \node[db] (inf) at (3.9,0) {\textbf{Inférence}\\\scriptsize TFLite / ONNX};
+  \node[db] (dec) at (7.8,0) {\textbf{Décision}\\\scriptsize Fusion locale};
+  \node[db] (res) at (11.7,0) {\textbf{Restitution}\\\scriptsize Voix, affichage};
+  \node[tealbox,text width=4.6cm] (syn) at (7.8,-2.3) {\textbf{Agent de synchronisation}\\\scriptsize Envoi sélectif, corrections, file d'attente hors ligne};
+  \node[graybox,text width=4.6cm] (cl) at (7.8,-5.2) {\textbf{Edge local ou cloud}\\\scriptsize Liaison asynchrone};
+  \draw[arr] (cap) -- (inf);
+  \draw[arr] (inf) -- (dec);
+  \draw[arr] (dec) -- (res);
+  \draw[darr] (dec) -- (syn);
+  \draw[darr,dashed] (syn) -- node[lbl,right=3pt]{gRPC / MQTT, TLS} (cl);
+  \begin{scope}[on background layer]
+    \node[zone,fit=(cap)(res)(syn),label={[font=\scriptsize\bfseries,anchor=south west]north west:Dispositif (chemin critique entièrement local)}] {};
+  \end{scope}
+\end{tikzpicture}
+\caption{Architecture interne du dispositif}
+\label{fig:dispositif}
+\end{figure}
+
+Le chemin principal (capture, inférence, décision, restitution) est entièrement local. Les modèles sont convertis en TensorFlow Lite ou ONNX et quantifiés (par exemple en entiers sur 8 bits) pour s'exécuter sur le NPU ou le GPU du smartphone ; l'utilisateur est prévenu en quelques dizaines de millisecondes.
+
+L'agent de synchronisation fonctionne de manière asynchrone. Il n'envoie que les données utiles : une image par seconde plutôt que trente, ou les images pour lesquelles la confiance locale est faible. Lorsqu'une correction arrive, la décision est mise à jour. En cas de coupure réseau, le dispositif passe en \textbf{mode dégradé} : il continue avec ses modèles locaux et met les événements en attente. Les appels distants sont protégés par un \textbf{disjoncteur} (\emph{Circuit Breaker})~\cite{nygard2018}.
+
+\section{Scénario de traitement d'une image}
+
+\begin{enumerate}
+  \item \textbf{Vers 30\,ms} : le dispositif capture l'image, exécute ses modèles légers et annonce le résultat à l'utilisateur.
+  \item \textbf{En parallèle} : l'agent de synchronisation publie l'image (ou ses embeddings) vers le cloud.
+  \item \textbf{Vers 150 à 300\,ms} : toutes les versions du cloud ont traité l'image et le service de fusion a produit la décision collective.
+  \item \textbf{Uniquement en cas de désaccord} : le service d'alertes pousse une correction, qui est annoncée à l'utilisateur.
+\end{enumerate}
+
+\section{Patrons d'architecture mobilisés}
+
+\begin{table}[H]
+\centering
+\caption{Patrons d'architecture et de conception utilisés}
+\label{tab:patrons}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{3.6cm} L}
+\toprule
+\rowcolor{headgray}\textbf{Patron} & \textbf{Où} & \textbf{Pourquoi}\\
+\midrule
+Edge computing & Dispositif & Garantir le temps réel et le fonctionnement hors ligne\\
+Publish/Subscribe & Broker Kafka & Diffuser la même image à toutes les versions simultanément\\
+Scatter-Gather & Service de fusion & Regrouper les réponses des versions avec un délai maximal\\
+API Gateway & Entrée du cloud & Point d'entrée unique, sécurité, limitation de débit\\
+Circuit Breaker & Agent de synchronisation & Éviter les blocages en cas de panne réseau ou cloud\\
+Strategy & Moteur de vote & Changer d'algorithme de fusion sans modifier le service\\
+Database per service & Base des profils & Isoler les données sensibles et découpler les services\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Sécurité et confidentialité}
+
+Les visages étant des données biométriques, plusieurs mesures sont prévues : chiffrement TLS de bout en bout, authentification des dispositifs et des objets connectés par certificats, transmission d'\emph{embeddings} (vecteurs numériques résumant un visage) plutôt que de photos brutes, chiffrement de la base des profils et minimisation des données conservées, conformément au RGPD.
+
+\section{Choix technologiques}
+
+\begin{table}[H]
+\centering
+\caption{Technologies proposées par couche}
+\label{tab:technos}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm} L}
+\toprule
+\rowcolor{headgray}\textbf{Élément} & \textbf{Technologies}\\
+\midrule
+Dispositif & Android/Kotlin, TensorFlow Lite ou ONNX Runtime, modèles quantifiés\\
+Objets connectés & Microcontrôleurs (Arduino, ESP32), MQTT~\cite{mqtt5}, BLE\\
+Edge local & Broker MQTT (EMQX ou Mosquitto), K3s\\
+Ingestion & Envoy ou Kong, gRPC\\
+Broker d'événements & Apache Kafka\\
+Inférence & Python, NVIDIA Triton ou TorchServe, conteneurs Docker, GPU\\
+Orchestration & Kubernetes (mise à l'échelle automatique)\\
+Données & PostgreSQL avec l'extension pgvector\\
+MLOps & MLflow\\
+Supervision & Prometheus, Grafana\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Justification : réponse aux exigences}
+
+\begin{table}[H]
+\centering
+\caption{Réponse de l'architecture proposée à chaque exigence}
+\label{tab:justification}
+\begin{tabularx}{\textwidth}{c L}
+\toprule
+\rowcolor{headgray}\textbf{Exigence} & \textbf{Réponse apportée}\\
+\midrule
+E1 Temps réel & La décision est locale ; le cloud ne sert qu'à corriger, le temps réel ne dépend plus du réseau\\
+E2 Flux & Un broker d'événements est conçu pour les flux continus, contrairement à REST\\
+E3 Collectif & Le Publish/Subscribe distribue l'image à N versions, le Scatter-Gather regroupe les réponses\\
+E4 Extensibilité & Une nouvelle version correspond à un conteneur supplémentaire, sans autre modification\\
+E5 Hétérogénéité & Chaque couche utilise la technologie adaptée à son matériel\\
+E6 Disponibilité & Mode dégradé local, persistance des messages dans Kafka, redémarrage automatique par Kubernetes\\
+E7 Confidentialité & Chiffrement, embeddings au lieu de photos, base chiffrée et minimisation des données\\
+E8 Scalabilité & Mise à l'échelle automatique par Kubernetes, qui remplace les formules fixes $P^{*}_{c}$ et $P^{*}_{s}$\\
+E9 Observabilité & Métriques de latence et de précision par version (Prometheus, Grafana)\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Correspondance avec l'architecture initiale}
+
+\begin{table}[H]
+\centering
+\caption{Correspondance entre l'architecture initiale et l'architecture proposée}
+\label{tab:correspondance}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.4cm} L}
+\toprule
+\rowcolor{headgray}\textbf{Élément de l'article} & \textbf{Dans la nouvelle architecture}\\
+\midrule
+Client lite (\dnnc) & Dispositif edge avec modèles quantifiés et décision locale\\
+Serveur multi-versions (\dnns) & Microservices d'inférence conteneurisés sur Kubernetes\\
+Appels REST synchrones & Broker d'événements (Kafka, MQTT) et gRPC en streaming\\
+\ms{MSParallelCollectiveManager} & Service de fusion collective (Scatter-Gather, vote calibré)\\
+\ms{ManagerServer} et envoi d'alerte & Service d'alertes en mode push, uniquement en cas de désaccord\\
+\ms{MSTinyParallelCollective} & Objets connectés publiant sur MQTT, source optionnelle de la fusion\\
+\ms{MSFaceDynamicTraining} et redémarrage & Pipeline MLOps et registre de modèles, déploiement sans interruption\\
+\og Un service par processeur \fg & Orchestration et mise à l'échelle automatique par Kubernetes\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Limites de la proposition}
+
+Aucune architecture n'est parfaite. Celle-ci est \textbf{plus complexe} à mettre en place et à exploiter : Kafka, Kubernetes et le MLOps exigent des compétences DevOps. Elle induit un \textbf{coût} d'infrastructure (GPU dans le cloud). Elle pose enfin un problème de \textbf{cohérence perçue} : l'utilisateur peut recevoir une annonce puis une correction, ce qui doit être géré du point de vue ergonomique, par exemple en n'annonçant localement que les décisions de forte confiance. Pour un prototype académique, il est possible de simplifier en remplaçant Kubernetes par Docker Compose et Kafka par un broker MQTT unique, tout en conservant la même logique.
+
+% =====================================================================
+\chapter{Modélisation selon le modèle C4}\label{ch:c4}
+% =====================================================================
+
+\section{Présentation du modèle C4}
+
+Le modèle C4, proposé par Simon Brown~\cite{brownC4}, décrit l'architecture d'un système logiciel à travers quatre niveaux de zoom successifs, à la manière d'une carte que l'on agrandit progressivement :
+\begin{enumerate}
+  \item \textbf{Contexte} : le système vu comme une boîte, avec ses utilisateurs et les systèmes externes ;
+  \item \textbf{Conteneurs} : les applications et stockages déployables qui composent le système ;
+  \item \textbf{Composants} : l'organisation interne d'un conteneur ;
+  \item \textbf{Code} : les classes qui réalisent un composant (niveau facultatif).
+\end{enumerate}
+Dans le modèle C4, un \og conteneur \fg{} désigne une unité exécutable ou de stockage (application, service, base de données), et non nécessairement un conteneur Docker.
+
+\begin{table}[H]
+\centering
+\caption{Notation utilisée dans les diagrammes C4}
+\label{tab:notation}
+\begin{tabularx}{\textwidth}{l L}
+\toprule
+\rowcolor{headgray}\textbf{Élément} & \textbf{Représentation}\\
+\midrule
+Personne & Bloc bleu foncé surmonté d'une tête\\
+Système logiciel étudié & Bloc bleu\\
+Système externe & Bloc gris\\
+Conteneur & Bloc bleu moyen ; bloc empilé lorsqu'il existe plusieurs instances\\
+Base de données & Cylindre bleu moyen\\
+Composant & Bloc bleu clair\\
+Frontière & Rectangle en pointillés portant le nom du système ou du conteneur\\
+Relation & Flèche en pointillés, annotée de l'action et du protocole entre crochets\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Chaque élément indique son nom, entre crochets son type et sa technologie, puis une courte description de sa responsabilité.
+
+\section{Niveau 1 : diagramme de contexte}
+
+Le diagramme de contexte (figure~\ref{fig:c4-contexte}) montre le système \dnnTcs{} comme une boîte unique, entourée des personnes qui l'utilisent et des systèmes externes avec lesquels il interagit.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  % Personnes
+  \node[c4head] (uh) at (0,4.6) {};
+  \node[c4person=3.4cm,below=-3mm of uh] (u)
+    {\cfour{Utilisateur final}{Personne}{Personne malvoyante, conducteur ou opérateur qui porte le dispositif}};
+  \node[c4head] (ah) at (11,4.6) {};
+  \node[c4person=3.4cm,below=-3mm of ah] (a)
+    {\cfour{Administrateur ML}{Personne}{Déploie, évalue et supervise les modèles}};
+  % Système
+  \node[c4system=5cm] (s) at (5.5,0)
+    {\cfour{Système \dnnTcs}{Système logiciel}{Perçoit l'environnement en temps réel (visages, émotions, genre, objets) et corrige collectivement ses décisions}};
+  % Systèmes externes
+  \node[c4ext=3.4cm] (iot) at (0,-4.4)
+    {\cfour{Objets connectés}{Système externe}{Microcontrôleurs publiant identité, position et dimensions}};
+  \node[c4ext=3.4cm] (m) at (5.5,-4.4)
+    {\cfour{Machine autonome hôte}{Système externe}{Véhicule, robot ou système de surveillance qui exploite les décisions}};
+  \node[c4ext=3.4cm] (d) at (11,-4.4)
+    {\cfour{Sources de données}{Système externe}{Jeux de données annotés (Multi-PIE, Bosphorus, YouTube-BB)}};
+  % Relations
+  \draw[c4rel] (u) -- node[c4lbl]{Porte le dispositif, reçoit des alertes vocales et visuelles} (s);
+  \draw[c4rel] (a) -- node[c4lbl]{Déploie et supervise les modèles [HTTPS]} (s);
+  \draw[c4rel] (iot) -- node[c4lbl]{Publie ses caractéristiques [MQTT, BLE]} (s);
+  \draw[c4rel] (s) -- node[c4lbl=3cm]{Transmet les décisions de perception [API locale]} (m);
+  \draw[c4rel] (s) -- node[c4lbl]{Importe les données d'entraînement [HTTPS]} (d);
+\end{tikzpicture}
+\caption{C4 niveau 1 : diagramme de contexte du système}
+\label{fig:c4-contexte}
+\end{figure}
+
+\paragraph{Lecture du diagramme.} Deux types de personnes interagissent avec le système : l'\textbf{utilisateur final}, qui porte le dispositif et reçoit les alertes, et l'\textbf{administrateur ML}, qui gère les modèles. Trois systèmes externes gravitent autour : les \textbf{objets connectés}, qui fournissent des informations fiables sur eux-mêmes ; la \textbf{machine autonome hôte}, qui exploite les décisions (par exemple pour freiner) ; et les \textbf{sources de données}, utilisées pour entraîner et évaluer les modèles. À ce niveau, aucune technologie interne n'apparaît : le diagramme s'adresse à tous les publics, y compris non techniques.
+
+% --------------------------- Niveau 2 (paysage) ----------------------
+\section{Niveau 2 : diagramme de conteneurs}
+
+Le diagramme de conteneurs, présenté en pleine page à la figure~\ref{fig:c4-conteneurs}, ouvre la boîte du système et montre ses unités déployables, leurs technologies et leurs échanges.
+
+\begin{landscape}
+\begin{figure}[H]
+\centering
+\resizebox{!}{0.86\textheight}{%
+\begin{tikzpicture}
+  % Personnes et systèmes externes
+  \node[c4head] (uh) at (0,4.7) {};
+  \node[c4person=3cm,below=-3mm of uh] (u) {\cfour{Utilisateur final}{Personne}{Porte le dispositif}};
+  \node[c4ext=3cm] (m) at (5.4,3.9) {\cfour{Machine autonome hôte}{Système externe}{Exploite les décisions}};
+  \node[c4ext=3cm] (iot) at (5.4,-10.6) {\cfour{Objets connectés}{Système externe}{Microcontrôleurs}};
+  \node[c4head] (ah) at (16.2,-9.9) {};
+  \node[c4person=3cm,below=-3mm of ah] (a) {\cfour{Administrateur ML}{Personne}{Gère les modèles}};
+  % Conteneurs
+  \node[c4cont] (app) at (0,0) {\cfour{Application embarquée}{Conteneur : Android, TensorFlow Lite}{Capture, inférence légère, décision locale, restitution}};
+  \node[c4cont] (gw) at (5.4,0) {\cfour{Passerelle d'ingestion}{Conteneur : Envoy, gRPC}{Authentifie, chiffre et publie les images}};
+  \node[c4cont] (k) at (10.8,0) {\cfour{Broker d'événements}{Conteneur : Apache Kafka}{Topics images, prédictions, IoT, décisions}};
+  \node[c4multi] (inf) at (16.2,0) {\cfour{Services d'inférence}{Conteneurs : Python, Triton, GPU}{Un service par tâche et par version de modèle}};
+  \node[c4cont] (al) at (5.4,-3.5) {\cfour{Service d'alertes}{Conteneur : Go, WebSocket}{Pousse les corrections vers le dispositif}};
+  \node[c4cont] (fu) at (10.8,-3.5) {\cfour{Service de fusion collective}{Conteneur : Python}{Scatter-Gather, calibration, vote pondéré}};
+  \node[c4db] (db) at (16.2,-3.5) {\cfour{Base des profils}{PostgreSQL, pgvector}{Embeddings chiffrés}};
+  \node[c4cont] (mq) at (5.4,-7) {\cfour{Broker IoT}{Conteneur : EMQX (MQTT), edge local}{Collecte les messages des objets}};
+  \node[c4cont] (reg) at (16.2,-7) {\cfour{Registre et MLOps}{Conteneur : MLflow}{Versions, métriques, réentraînement}};
+  % Frontière du système
+  \begin{scope}[on background layer]
+    \node[c4boundary,fit=(app)(gw)(k)(inf)(al)(fu)(db)(mq)(reg)] (b) {};
+  \end{scope}
+  \node[anchor=north east,font=\scriptsize\bfseries,text=c4line] at ([xshift=-3mm,yshift=-2mm]b.north east) {Système \dnnTcs{} [Système logiciel]};
+  % Relations
+  \draw[c4rel] (u) -- node[c4lbl=2cm,right=2pt]{Utilise [voix, écran]} (app);
+  \draw[c4rel] (app.north east) -- node[c4lbl=2.2cm,sloped,above]{Décisions [API locale]} (m.south west);
+  \draw[c4rel] (app) -- node[c4lbl=1.7cm,below=3pt]{Envoie images ou embeddings [gRPC, TLS]} (gw);
+  \draw[c4rel] (gw) -- node[c4lbl=1.7cm,above=3pt]{Publie les images [Kafka]} (k);
+  \draw[c4drel] (k) -- node[c4lbl=1.7cm,above=3pt]{Images et prédictions [pub/sub]} (inf);
+  \draw[c4rel] (inf) -- node[c4lbl=2cm,right=2pt]{Lit et écrit [SQL]} (db);
+  \draw[c4drel] (k) -- node[c4lbl=2.3cm,right=2pt]{Consomme prédictions, publie décisions} (fu);
+  \draw[c4rel] (fu) -- node[c4lbl=1.7cm,above=3pt]{Signale les désaccords} (al);
+  \draw[c4rel] (al.west) -| node[c4lbl=2.6cm,pos=0.3,above=2pt]{Pousse les corrections [WebSocket]} ([xshift=6mm]app.south);
+  \draw[c4rel] (iot) -- node[c4lbl=2.2cm,right=2pt]{Publie identité, position [MQTT]} (mq);
+  \draw[c4rel] (iot.west) -| node[c4lbl=2.2cm,pos=0.3,above=2pt]{Diffuse localement [BLE]} ([xshift=-6mm]app.south);
+  \draw[c4rel] (mq.east) -| node[c4lbl=2.4cm,pos=0.3,above=2pt]{Relaie les données IoT [pont MQTT-Kafka]} (fu.south);
+  \draw[c4rel] (fu) -- node[c4lbl=2cm,sloped,above]{Lit les métriques [REST]} (reg);
+  \draw[c4rel] (reg.east) -- ++(1.2,0) |- node[c4lbl=2cm,pos=0.25,right=2pt]{Fournit les modèles} (inf.east);
+  \draw[c4rel] (ah) -- node[c4lbl=2cm,right=2pt]{Déploie, supervise [HTTPS]} (reg);
+\end{tikzpicture}}
+\caption{C4 niveau 2 : diagramme de conteneurs}
+\label{fig:c4-conteneurs}
+\end{figure}
+\end{landscape}
+
+\paragraph{Lecture du diagramme.} Le tableau~\ref{tab:conteneurs} résume leurs responsabilités. Le flux principal suit la ligne supérieure : l'application embarquée prend une décision locale puis envoie les images à la passerelle, qui les publie dans Kafka ; les services d'inférence les consomment en parallèle et publient leurs prédictions ; le service de fusion les combine avec les données IoT et signale les désaccords au service d'alertes, qui pousse les corrections vers le dispositif.
+
+\begin{table}[H]
+\centering
+\caption{Conteneurs du système et leurs responsabilités}
+\label{tab:conteneurs}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{3.6cm} L}
+\toprule
+\rowcolor{headgray}\textbf{Conteneur} & \textbf{Technologie} & \textbf{Responsabilité}\\
+\midrule
+Application embarquée & Android, TensorFlow Lite & Chemin critique local : capture, inférence légère, décision, restitution, synchronisation\\
+Passerelle d'ingestion & Envoy, gRPC & Point d'entrée unique, authentification, chiffrement, publication des images\\
+Broker d'événements & Apache Kafka & Distribution des événements entre services, persistance, découplage\\
+Services d'inférence & Python, Triton, GPU & Une instance par tâche et par version de modèle ; mise à l'échelle indépendante\\
+Service de fusion collective & Python & Regroupement, calibration et vote pondéré des prédictions\\
+Service d'alertes & Go, WebSocket & Envoi des corrections au dispositif en cas de désaccord\\
+Base des profils & PostgreSQL, pgvector & Stockage chiffré des embeddings de visages connus\\
+Broker IoT & EMQX (MQTT) & Collecte des messages des objets connectés, au plus près du terrain\\
+Registre et MLOps & MLflow & Versions des modèles, métriques de précision, réentraînement\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% --------------------------- Niveau 3 (paysage) ----------------------
+\section{Niveau 3 : diagramme de composants du service de fusion}
+
+Le niveau~3 zoome sur un conteneur précis. Nous avons choisi le service de fusion collective, car c'est lui qui réalise l'idée centrale de l'article ; son diagramme est présenté en pleine page à la figure~\ref{fig:c4-composants}.
+
+\begin{landscape}
+\begin{figure}[H]
+\centering
+\resizebox{!}{0.8\textheight}{%
+\begin{tikzpicture}
+  \node[c4cont=3.2cm] (k) at (5,4.3) {\cfour{Broker d'événements}{Conteneur : Apache Kafka}{Topics prédictions, IoT, décisions}};
+  \node[c4cont=3.2cm] (reg) at (15.6,0) {\cfour{Registre de modèles}{Conteneur : MLflow}{Métriques de précision par version}};
+  \node[c4comp] (cons) at (0,0) {\cfour{Consommateur de prédictions}{Composant : client Kafka}{Lit les prédictions des versions et la décision du dispositif}};
+  \node[c4comp] (iota) at (5,0) {\cfour{Adaptateur IoT}{Composant : client Kafka}{Normalise les données des objets connectés}};
+  \node[c4comp] (wm) at (10,0) {\cfour{Gestionnaire de poids}{Composant : Python}{Calcule le poids $w_v$ de chaque version}};
+  \node[c4comp] (agg) at (0,-3.5) {\cfour{Agrégateur Scatter-Gather}{Composant : Python}{Regroupe par image avec un délai maximal $\Delta$}};
+  \node[c4comp] (cal) at (5,-3.5) {\cfour{Calibrateur de confiance}{Composant : Python}{Rend les scores comparables (temperature scaling)}};
+  \node[c4comp] (vote) at (10,-3.5) {\cfour{Moteur de vote}{Composant : patron Strategy}{Vote pondéré intégrant la preuve IoT}};
+  \node[c4comp] (prod) at (5,-7) {\cfour{Producteur de décisions}{Composant : client Kafka}{Publie la décision et les alertes}};
+  \node[c4comp] (cmp) at (10,-7) {\cfour{Comparateur edge/cloud}{Composant : Python}{Détecte les désaccords avec le dispositif}};
+  \begin{scope}[on background layer]
+    \node[c4boundary,fit=(cons)(iota)(wm)(agg)(cal)(vote)(prod)(cmp)] (b) {};
+  \end{scope}
+  \node[anchor=north east,font=\scriptsize\bfseries,text=c4line] at ([xshift=-3mm,yshift=-2mm]b.north east) {Service de fusion collective [Conteneur]};
+  % Relations
+  \draw[c4rel] (k.west) -| node[c4lbl=2cm,pos=0.3,above=2pt]{Prédictions [Kafka]} (cons.north);
+  \draw[c4rel] (k) -- node[c4lbl=2cm,right=2pt]{Données IoT [Kafka]} (iota);
+  \draw[c4rel] (cons) -- node[c4lbl=2cm,right=2pt]{Prédictions brutes} (agg);
+  \draw[c4rel] (agg) -- node[c4lbl=1.3cm,above=3pt]{Lot d'une image} (cal);
+  \draw[c4rel] (cal) -- node[c4lbl=1.3cm,above=3pt]{Scores calibrés} (vote);
+  \draw[c4rel] (iota.south east) -- node[c4lbl=1.6cm,sloped,above]{Preuve IoT} (vote.north west);
+  \draw[c4rel] (wm) -- node[c4lbl=1.6cm,right=2pt]{Poids $w_v$} (vote);
+  \draw[c4rel] (reg) -- node[c4lbl=1.8cm,above=3pt]{Lit les métriques [REST]} (wm);
+  \draw[c4rel] (vote) -- node[c4lbl=1.8cm,right=2pt]{Décision fusionnée} (cmp);
+  \draw[c4rel] (cmp) -- node[c4lbl=1.3cm,above=3pt]{Décision et alerte} (prod);
+  \draw[c4rel] (prod.west) -- (-3.3,-7) |- node[c4lbl=2cm,pos=0.25,left=2pt]{Publie [Kafka]} ([yshift=5mm]k.north) -- (k.north);
+\end{tikzpicture}}
+\caption{C4 niveau 3 : composants du service de fusion collective}
+\label{fig:c4-composants}
+\end{figure}
+\end{landscape}
+
+\paragraph{Lecture du diagramme.} Le \textbf{consommateur de prédictions} lit les résultats de toutes les versions ainsi que la décision locale du dispositif. L'\textbf{agrégateur Scatter-Gather} les regroupe par identifiant d'image et attend au plus un délai $\Delta$. Le \textbf{calibrateur} rend les scores comparables, puis le \textbf{moteur de vote} combine les prédictions en tenant compte des poids fournis par le \textbf{gestionnaire de poids} (calculés à partir des métriques du registre) et de la preuve fournie par l'\textbf{adaptateur IoT}. Le \textbf{comparateur} confronte la décision fusionnée à celle du dispositif et le \textbf{producteur} publie la décision, accompagnée d'une alerte en cas de désaccord.
+
+\section{Niveau 4 : code du moteur de fusion}
+
+Le niveau~4 est facultatif dans le modèle C4 ; il est présenté ici pour le cœur algorithmique du service de fusion, sous la forme d'un diagramme de classes UML (figure~\ref{fig:c4-code}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \node[umlclass=4.2cm] (eng) at (0,0)
+    {\hspace*{\fill}\textbf{FusionEngine}\hspace*{\fill}
+     \nodepart{two}\ms{- strategy : FusionStrategy}\\\ms{- calibrator : Calibrator}\\\ms{- window : Duration}
+     \nodepart{three}\ms{+ process(frameId) : Decision}};
+  \node[umlclass=4.2cm] (st) at (7,0)
+    {\hspace*{\fill}\textit{\guillemotleft interface\guillemotright}\hspace*{\fill}\\\hspace*{\fill}\textbf{FusionStrategy}\hspace*{\fill}
+     \nodepart{two}~
+     \nodepart{three}\ms{+ fuse(preds, iot) : Decision}};
+  \node[umlclass=3.6cm] (cal) at (0,-4.3)
+    {\hspace*{\fill}\textbf{TemperatureCalibrator}\hspace*{\fill}
+     \nodepart{two}\ms{- T : float}
+     \nodepart{three}\ms{+ calibrate(p) : Prediction}};
+  \node[umlclass=4cm] (wv) at (5,-4.3)
+    {\hspace*{\fill}\textbf{WeightedVoteStrategy}\hspace*{\fill}
+     \nodepart{two}\ms{- weights : Map[Version, float]}
+     \nodepart{three}\ms{+ fuse(preds, iot) : Decision}};
+  \node[umlclass=4cm] (ip) at (10,-4.3)
+    {\hspace*{\fill}\textbf{IoTPriorityStrategy}\hspace*{\fill}
+     \nodepart{two}\ms{- lambda : float}
+     \nodepart{three}\ms{+ fuse(preds, iot) : Decision}};
+  \node[umlclass=3.8cm] (pr) at (2.5,-8.4)
+    {\hspace*{\fill}\textbf{Prediction}\hspace*{\fill}
+     \nodepart{two}\ms{frameId, version,}\\\ms{label, score, bbox}
+     \nodepart{three}~};
+  \node[umlclass=3.8cm] (de) at (8,-8.4)
+    {\hspace*{\fill}\textbf{Decision}\hspace*{\fill}
+     \nodepart{two}\ms{frameId, label,}\\\ms{confidence, sources}
+     \nodepart{three}~};
+  \draw[assoc] (eng) -- node[lbl,above]{utilise} (st);
+  \draw[assoc] (eng) -- node[lbl,right]{utilise} (cal);
+  \draw[realize] (wv.north) -- (st.south);
+  \draw[realize] (ip.north) -- (st.south);
+  \draw[depend] (cal.south) -- node[lbl,sloped,above]{\guillemotleft produit\guillemotright} (pr.north west);
+  \draw[depend] (wv.south) -- node[lbl,sloped,above]{\guillemotleft crée\guillemotright} (de.north west);
+  \draw[depend] (ip.south) -- node[lbl,sloped,above]{\guillemotleft crée\guillemotright} (de.north east);
+\end{tikzpicture}
+\caption{C4 niveau 4 : diagramme de classes du moteur de fusion}
+\label{fig:c4-code}
+\end{figure}
+
+La classe \ms{FusionEngine} délègue la combinaison des prédictions à une interface \ms{FusionStrategy} : c'est le patron \textbf{Strategy}. Deux stratégies sont proposées : \ms{WeightedVoteStrategy}, qui réalise le vote pondéré de l'algorithme~\ref{alg:fusion}, et \ms{IoTPriorityStrategy}, qui donne la priorité aux données des objets connectés lorsqu'elles sont disponibles. Une nouvelle méthode de fusion (par exemple un méta-classifieur appris) pourra être ajoutée sans modifier \ms{FusionEngine}, conformément au principe ouvert/fermé. Le \ms{TemperatureCalibrator} produit des objets \ms{Prediction} dont les scores sont comparables entre versions.
+
+\section{Vue dynamique : traitement d'une image}
+
+Le modèle C4 propose, en complément, des diagrammes dynamiques qui montrent comment les éléments collaborent pour un scénario donné. Le tableau~\ref{tab:dynamique} décrit le traitement d'une image, en réutilisant les conteneurs du niveau~2.
+
+\begin{table}[H]
+\centering
+\caption{Vue dynamique : traitement d'une image de bout en bout}
+\label{tab:dynamique}
+\begin{tabularx}{\textwidth}{c >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{3.3cm} L}
+\toprule
+\rowcolor{headgray}\textbf{N\textsuperscript{o}} & \textbf{Source} & \textbf{Destination} & \textbf{Interaction}\\
+\midrule
+1 & Application embarquée & Utilisateur final & Annonce la décision locale (environ 30\,ms)\\
+2 & Application embarquée & Passerelle d'ingestion & Envoie l'image ou ses embeddings [gRPC, TLS]\\
+3 & Passerelle d'ingestion & Broker d'événements & Publie l'événement image\\
+4 & Broker d'événements & Services d'inférence & Diffuse l'image à toutes les versions en parallèle\\
+5 & Services d'inférence & Broker d'événements & Publient leurs prédictions\\
+6 & Broker IoT & Service de fusion & Relaie les données des objets présents\\
+7 & Service de fusion & Service d'alertes & Signale un désaccord avec la décision locale\\
+8 & Service d'alertes & Application embarquée & Pousse la correction [WebSocket]\\
+9 & Application embarquée & Utilisateur final & Annonce la décision corrigée\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+\markboth{Conclusion générale}{}
+% ---------------------------------------------------------------------
+
+L'étude du système \dnnTcs{} montre une idée pertinente : combiner l'exécution locale de modèles légers, la correction par des modèles plus lourds et l'apport d'objets connectés, afin de concilier temps réel et précision en vision embarquée.
+
+L'analyse de son architecture a toutefois montré un écart entre l'intention et la réalisation. Il s'agit d'une architecture client-serveur à client lourd, étendue à trois tiers, dont les composants présentés comme des micro-services sont en réalité des processus d'une même application. Ce monolithe modulaire multi-processus souffre d'un couplage rigide au matériel, d'une communication synchrone mal adaptée aux flux vidéo, d'un point de défaillance unique et d'une absence de prise en compte de la sécurité.
+
+Nous avons proposé une architecture hybride Edge--Fog--Cloud orientée événements. La décision immédiate est prise sur le dispositif, ce qui garantit le temps réel et le fonctionnement hors ligne. Dans le cloud, de véritables microservices, découplés par un broker d'événements, exécutent en parallèle toutes les versions des modèles ; un service de fusion fondé sur les patrons Publish/Subscribe et Scatter-Gather réalise la décision collective de manière calibrée, et les objets connectés deviennent une source d'information optionnelle. Cette architecture a été documentée selon les quatre niveaux du modèle C4.
+
+Ses principales limites sont sa complexité opérationnelle et son coût. Une suite naturelle de ce travail serait la réalisation d'un prototype simplifié (Docker Compose, broker MQTT) permettant de mesurer effectivement la latence de bout en bout et le gain de précision apporté par la fusion collective.
+
+% ---------------------------------------------------------------------
+\begin{thebibliography}{99}
+\addcontentsline{toc}{chapter}{Bibliographie}
+
+\bibitem{helaoui2025}
+M.~Helaoui et S.~Bahroun,
+\og Parallel Collective Tiny Deep Learning System for Face and Object Reidentification in Uncontrolled Environments \fg,
+\emph{Research Square} (prépublication), 2025.
+DOI : \href{https://doi.org/10.21203/rs.3.rs-5108948/v1}{10.21203/rs.3.rs-5108948/v1}.
+
+\bibitem{lee2017}
+S.~Lee, D.~Jha, A.~Agrawal, A.~Choudhary et W.-k.~Liao,
+\og Parallel deep convolutional neural network training by exploiting the overlapping of computation and communication \fg,
+\emph{IEEE 24th International Conference on High Performance Computing (HiPC)}, p.~183--192, 2017.
+
+\bibitem{brownC4}
+S.~Brown,
+\emph{The C4 model for visualising software architecture},
+\url{https://c4model.com}.
+
+\bibitem{fowler2014}
+J.~Lewis et M.~Fowler,
+\og Microservices: a definition of this new architectural term \fg, 2014,
+\url{https://martinfowler.com/articles/microservices.html}.
+
+\bibitem{newman2021}
+S.~Newman,
+\emph{Building Microservices}, 2\textsuperscript{e} édition, O'Reilly Media, 2021.
+
+\bibitem{richards2020}
+M.~Richards et N.~Ford,
+\emph{Fundamentals of Software Architecture}, O'Reilly Media, 2020.
+
+\bibitem{hohpe2003}
+G.~Hohpe et B.~Woolf,
+\emph{Enterprise Integration Patterns}, Addison-Wesley, 2003.
+
+\bibitem{kreps2011}
+J.~Kreps, N.~Narkhede et J.~Rao,
+\og Kafka: a distributed messaging system for log processing \fg,
+\emph{Proceedings of the NetDB Workshop}, 2011.
+
+\bibitem{mqtt5}
+OASIS,
+\emph{MQTT Version 5.0}, OASIS Standard, 2019.
+
+\bibitem{guo2017}
+C.~Guo, G.~Pleiss, Y.~Sun et K.~Q.~Weinberger,
+\og On calibration of modern neural networks \fg,
+\emph{Proceedings of the 34th International Conference on Machine Learning (ICML)}, 2017.
+
+\bibitem{shi2016}
+W.~Shi, J.~Cao, Q.~Zhang, Y.~Li et L.~Xu,
+\og Edge computing: vision and challenges \fg,
+\emph{IEEE Internet of Things Journal}, vol.~3, n\textsuperscript{o}~5, p.~637--646, 2016.
+
+\bibitem{bonomi2012}
+F.~Bonomi, R.~Milito, J.~Zhu et S.~Addepalli,
+\og Fog computing and its role in the internet of things \fg,
+\emph{Proceedings of the MCC Workshop on Mobile Cloud Computing}, p.~13--16, 2012.
+
+\bibitem{nygard2018}
+M.~T.~Nygard,
+\emph{Release It! Design and Deploy Production-Ready Software}, 2\textsuperscript{e} édition, Pragmatic Bookshelf, 2018.
+
+\end{thebibliography}
+
+\end{document}
